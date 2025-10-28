@@ -59,6 +59,7 @@ module "nat_gateway" {
   role                 = var.role
   environment          = var.environment
   is_ip_address_prefix = false
+  subnet_id            = [module.vent.subnet_ids["cluster-k8s"]]
 }
 
 # k6-operatorのインストール (helmでインストールしたものもtfstateで管理するのか微妙？頻繁に実行基盤が削除されるのであれば、ｄelete時にhelmでインストールしたものの状態が変更していれば正常に削除できない可能性がある。)

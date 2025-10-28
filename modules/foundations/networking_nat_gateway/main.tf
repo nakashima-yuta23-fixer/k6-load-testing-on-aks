@@ -76,3 +76,13 @@ resource "azurerm_nat_gateway_public_ip_prefix_association" "public_ip_prefix_as
   nat_gateway_id      = azurerm_nat_gateway.this.id
   public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix[0].id
 }
+
+# ------------------------------------------------------------------------------
+# Resource Creation: Manages the association between a NAT Gateway and a Subnet
+# ------------------------------------------------------------------------------
+
+resource "azurerm_subnet_nat_gateway_association" "subnet_association" {
+  count          = length(var.subnet_id)
+  subnet_id      = var.subnet_id[count.index]
+  nat_gateway_id = azurerm_nat_gateway.this.id
+}

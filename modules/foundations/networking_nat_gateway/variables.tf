@@ -33,3 +33,8 @@ variable "is_ip_address_prefix" {
   description = "The flag indicating whether it is an IP address prefix."
   type        = bool
 }
+
+variable "subnet_id" {
+  description = "The subnet to be associated with the NAT Gateway ID."
+  type        = list(string)
+}
