@@ -1,7 +1,7 @@
 # ==============================================================================
 # LOGIC (The Internal Implementation)
 #
-# This file contains the core logic for creating the NAT Gateway.
+# This file contains the core logic for creating the NAT Gateway and public IP address, associating NAT Gateway with public IP address and NAT Gateway with one or more subnets.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
