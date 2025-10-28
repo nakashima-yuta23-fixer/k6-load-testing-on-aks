@@ -58,6 +58,7 @@ module "nat_gateway" {
   customer_code        = var.customer_code
   role                 = var.role
   environment          = var.environment
+  
   is_ip_address_prefix = false
   subnet_id            = [module.vent.subnet_ids["cluster-k8s"]]
 }
