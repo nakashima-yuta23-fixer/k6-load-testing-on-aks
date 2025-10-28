@@ -27,7 +27,7 @@ module "vent" {
   role                = var.role
   environment         = var.environment
 
-  vnet_address_space = var.vnet_address_space
+  vnet_address_space  = var.vnet_address_space
 
   subnets = {
     "gateway-k8s" = {
@@ -53,11 +53,12 @@ module "vent" {
 module "nat_gateway" {
   source = "../../foundations/networking_nat_gateway"
 
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  customer_code       = var.customer_code
-  role                = var.role
-  environment         = var.environment
+  resource_group_name  = module.resource_group.name
+  location             = module.resource_group.location
+  customer_code        = var.customer_code
+  role                 = var.role
+  environment          = var.environment
+  is_ip_address_prefix = false
 }
 
 # k6-operatorのインストール (helmでインストールしたものもtfstateで管理するのか微妙？頻繁に実行基盤が削除されるのであれば、ｄelete時にhelmでインストールしたものの状態が変更していれば正常に削除できない可能性がある。)

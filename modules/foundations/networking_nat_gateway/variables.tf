@@ -28,3 +28,8 @@ variable "location" {
   description = "The Azure location where the VNet will be created."
   type        = string
 }
+
+variable "is_ip_address_prefix" {
+  description = "The flag indicating whether it is an IP address prefix."
+  type        = bool
+}

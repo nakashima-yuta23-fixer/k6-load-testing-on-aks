@@ -18,6 +18,16 @@ module "nat_gateway_naming" {
   location      = var.location
 }
 
+module "public_ip_address_naming" {
+  source = "../../utils/naming"
+
+  resource_type = "public_ip_address"
+  customer_code = var.customer_code
+  role          = var.role
+  environment   = var.environment
+  location      = var.location
+}
+
 # ------------------------------------------------------------------------------
 # Resource Creation: NAT Gateway
 # ------------------------------------------------------------------------------
@@ -30,7 +40,39 @@ resource "azurerm_nat_gateway" "this" {
   idle_timeout_in_minutes = 4
 }
 
-# resource "azurerm_nat_gateway_public_ip_association" "this" {
-#   nat_gateway_id       = azurerm_nat_gateway.this.id
-#   public_ip_address_id = 
-# }
+# ------------------------------------------------------------------------------
+# Resource Creation: Public IP
+# ------------------------------------------------------------------------------
+
+resource "azurerm_public_ip" "public_ip" {
+  count               = var.is_ip_address_prefix ? 0 : 1
+  name                = module.public_ip_address_naming.kebab
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_public_ip_prefix" "public_ip_prefix" {
+  count               = var.is_ip_address_prefix ? 1 : 1
+  name                = module.public_ip_address_naming.kebab
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  sku                 = "Standard"
+}
+
+# ------------------------------------------------------------------------------
+# Resource Creation: Manages the association between a NAT Gateway and a Public IP
+# ------------------------------------------------------------------------------
+
+resource "azurerm_nat_gateway_public_ip_association" "public_ip_association" {
+  count                = var.is_ip_address_prefix ? 0 : 1
+  nat_gateway_id       = azurerm_nat_gateway.this.id
+  public_ip_address_id = azurerm_public_ip.public_ip[0].id
+}
+
+resource "azurerm_nat_gateway_public_ip_prefix_association" "public_ip_prefix_association" {
+  count               = var.is_ip_address_prefix ? 1 : 0
+  nat_gateway_id      = azurerm_nat_gateway.this.id
+  public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix[0].id
+}
