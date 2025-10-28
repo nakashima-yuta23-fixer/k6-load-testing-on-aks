@@ -54,7 +54,7 @@ resource "azurerm_public_ip" "public_ip" {
 }
 
 resource "azurerm_public_ip_prefix" "public_ip_prefix" {
-  count               = var.is_ip_address_prefix ? 1 : 1
+  count               = var.is_ip_address_prefix ? 1 : 0
   name                = module.public_ip_address_naming.kebab
   resource_group_name = var.resource_group_name
   location            = var.location
