@@ -27,7 +27,7 @@ module "vent" {
   role                = var.role
   environment         = var.environment
 
-  vnet_address_space  = var.vnet_address_space
+  vnet_address_space = var.vnet_address_space
 
   subnets = {
     "gateway-k8s" = {
