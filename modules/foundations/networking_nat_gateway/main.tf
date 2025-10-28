@@ -36,8 +36,8 @@ resource "azurerm_nat_gateway" "this" {
   name                    = module.nat_gateway_naming.kebab
   resource_group_name     = var.resource_group_name
   location                = var.location
-  sku_name                = "Standard"
-  idle_timeout_in_minutes = 4
+  sku_name                = var.sku_name
+  idle_timeout_in_minutes = var.idle_timeout_in_minutes
 }
 
 # ------------------------------------------------------------------------------

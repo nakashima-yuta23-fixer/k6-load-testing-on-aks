@@ -29,6 +29,16 @@ variable "location" {
   type        = string
 }
 
+variable "sku_name" {
+  description = "This variable is the sku name of the NAT Gateway."
+  type        = string
+}
+
+variable "idle_timeout_in_minutes" {
+  description = "This variable is the NAT gateway idle timeout (in minutes)."
+  type        = string
+}
+
 variable "is_ip_address_prefix" {
   description = "The flag indicating whether it is an IP address prefix."
   type        = bool

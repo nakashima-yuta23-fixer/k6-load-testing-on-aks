@@ -53,12 +53,14 @@ module "vent" {
 module "nat_gateway" {
   source = "../../foundations/networking_nat_gateway"
 
-  resource_group_name  = module.resource_group.name
-  location             = module.resource_group.location
-  customer_code        = var.customer_code
-  role                 = var.role
-  environment          = var.environment
-  
+  resource_group_name     = module.resource_group.name
+  location                = module.resource_group.location
+  customer_code           = var.customer_code
+  role                    = var.role
+  environment             = var.environment
+  sku_name                = var.nat_gateway_sku_name
+  idle_timeout_in_minutes = var.nat_gateway_idle_timeout_in_minutes
+
   is_ip_address_prefix = false
   subnet_id            = [module.vent.subnet_ids["cluster-k8s"]]
 }

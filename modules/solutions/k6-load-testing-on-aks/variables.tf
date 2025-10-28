@@ -47,3 +47,17 @@ variable "snet_address_prefixes_cluster_k8s" {
   description = "A list of CIDR blocks for the privatelink subnet (e.g., [\"10.10.2.0/24\"])."
   type        = list(string)
 }
+
+# ------------------------------------------------------------------------------
+# NAT Gateway
+# ------------------------------------------------------------------------------
+
+variable "nat_gateway_sku_name" {
+  description = "This variable is the sku name of the NAT Gateway."
+  type        = string
+}
+
+variable "nat_gateway_idle_timeout_in_minutes" {
+  description = "This variable is the NAT gateway idle timeout (in minutes)."
+  type        = string
+}
