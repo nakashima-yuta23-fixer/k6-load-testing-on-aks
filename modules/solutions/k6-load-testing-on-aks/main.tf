@@ -150,7 +150,7 @@ module "nat_gateway" {
   idle_timeout_in_minutes = var.nat_gateway_idle_timeout_in_minutes
 
   is_ip_address_prefix = false
-  subnet_id            = [module.vent.subnet_ids["cluster-k8s"]]
+  subnet_id            = {for k, v in module.vent.subnet_ids : k => v if k != "gateway-k8s"}
 }
 
 # k6-operatorのインストール (helmでインストールしたものもtfstateで管理するのか微妙？頻繁に実行基盤が削除されるのであれば、ｄelete時にhelmでインストールしたものの状態が変更していれば正常に削除できない可能性がある。)
