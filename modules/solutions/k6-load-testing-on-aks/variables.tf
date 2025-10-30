@@ -61,3 +61,8 @@ variable "nat_gateway_idle_timeout_in_minutes" {
   description = "This variable is the NAT gateway idle timeout (in minutes)."
   type        = string
 }
+
+variable "is_ip_address_prefix" {
+  description = "The flag indicating whether it is an IP address prefix."
+  type        = bool
+}
