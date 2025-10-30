@@ -38,6 +38,10 @@ resource "azurerm_nat_gateway" "this" {
   location                = var.location
   sku_name                = var.sku_name
   idle_timeout_in_minutes = var.idle_timeout_in_minutes
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
 }
 
 # ------------------------------------------------------------------------------
@@ -73,6 +77,7 @@ resource "azurerm_nat_gateway_public_ip_association" "public_ip_association" {
 
 resource "azurerm_nat_gateway_public_ip_prefix_association" "public_ip_prefix_association" {
   count               = var.is_ip_address_prefix ? 1 : 0
+
   nat_gateway_id      = azurerm_nat_gateway.this.id
   public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix[0].id
 }
@@ -82,7 +87,8 @@ resource "azurerm_nat_gateway_public_ip_prefix_association" "public_ip_prefix_as
 # ------------------------------------------------------------------------------
 
 resource "azurerm_subnet_nat_gateway_association" "subnet_association" {
-  for_each       = toset(var.subnet_id)
+  for_each = var.subnet_id
+
   subnet_id      = each.value
   nat_gateway_id = azurerm_nat_gateway.this.id
 }

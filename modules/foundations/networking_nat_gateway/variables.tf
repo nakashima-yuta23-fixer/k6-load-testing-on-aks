@@ -46,5 +46,5 @@ variable "is_ip_address_prefix" {
 
 variable "subnet_id" {
   description = "The subnet to be associated with the NAT Gateway ID."
-  type        = list(string)
+  type        = map(string)
 }
