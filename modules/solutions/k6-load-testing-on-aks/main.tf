@@ -1,66 +1,90 @@
-# ------------------------------------------------------------------------------
-# Naming
-# ------------------------------------------------------------------------------
-
-module "nat_gateway_naming" {
-  source = "../../utils/naming"
-
-  resource_type = "nat_gateway"
-  customer_code = var.customer_code
-  role          = var.role
-  environment   = var.environment
-  location      = var.location
-}
-
-module "public_ip_address_naming" {
-  source = "../../utils/naming"
-
-  resource_type = "public_ip_address"
-  customer_code = var.customer_code
-  role          = var.role
-  environment   = var.environment
-  location      = var.location
-}
-
 # resource group 作成
-module "resource_group" {
-  source = "../../foundations/core_resource_group"
-
-  customer_code = var.customer_code
-  role          = var.role
-  environment   = var.environment
-  location      = var.location
-
-  # Enable optional governance features
-  enable_delete_lock            = true
-  enable_tag_inheritance_policy = true
-
-  # Add custom tags to the resource group
-  custom_tags = {
+# Create the resource group with standardized and formatted tags.
+resource "azurerm_resource_group" "this" {
+  name     = "rg-k6natg-load-testing-dv-je"
+  location = var.location
+  tags     = {
+    "customer_code" = var.customer_code,
+    "role" = var.role,
+    "environment" = var.environment,
     "solution" = "k6-load-testing-on-aks"
   }
 }
 
-# vnet/subnet 作成
-module "vnet" {
-  source = "../../foundations/networking_vnet"
+# Apply a delete lock if enabled.
+resource "azurerm_management_lock" "delete_lock" {
+  name       = "${resource.azurerm_resource_group.this.name}-delete-lock"
+  scope      = azurerm_resource_group.this.id
+  lock_level = "CanNotDelete"
+  notes      = "This resource group is protected from accidental deletion by Terraform."
 
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  customer_code       = var.customer_code
-  role                = var.role
-  environment         = var.environment
+  depends_on = [
+    azurerm_resource_group.this,
+    azurerm_role_assignment.policy_identity_tag_contributor
+  ]
+}
 
-  vnet_address_space = var.vnet_address_space
+# --- Tag Inheritance Policy Logic ---
 
-  subnets = {
-    "gateway-k8s" = {
-      address_prefixes = var.snet_address_prefixes_gateway_k8s
-    },
-    "cluster-k8s" = {
-      address_prefixes = var.snet_address_prefixes_cluster_k8s
-    },
+# Look up the built-in policy definition for inheriting a single tag.
+data "azurerm_policy_definition" "inherit_tag_from_rg" {
+  display_name = "Inherit a tag from the resource group"
+}
+
+# Use for_each to iterate over the list of tag names and create a policy assignment for each.
+resource "azurerm_resource_group_policy_assignment" "inherit_tags" {
+  for_each = toset([var.customer_code, var.role, var.environment, var.location])
+
+  name                 = "${resource.azurerm_resource_group.this.name}-inherit-tag-${lower(replace(each.key, "_", "-"))}"
+  resource_group_id    = azurerm_resource_group.this.id
+  policy_definition_id = data.azurerm_policy_definition.inherit_tag_from_rg.id
+
+  parameters = jsonencode({
+    "tagName" = {
+      # The policy parameter expects the exact tag key name.
+      value = each.key
+    }
+  })
+
+  # Create a system-assigned managed identity for this policy assignment.
+  # This identity is required for the 'modify' effect to work.
+  identity {
+    type = "SystemAssigned"
   }
+
+  # The location of the policy assignment must be specified when an identity is used.
+  location = var.location
+}
+
+# Grant the 'Tag Contributor' role to the managed identity of each policy assignment.
+resource "azurerm_role_assignment" "policy_identity_tag_contributor" {
+  for_each = azurerm_resource_group_policy_assignment.inherit_tags
+
+  scope                = azurerm_resource_group.this.id
+  role_definition_name = "Tag Contributor"
+  principal_id         = each.value.identity[0].principal_id
+}
+
+# vnet/subnet 作成
+resource "azurerm_virtual_network" "this" {
+  name                = "vnet-k6natg-load-testing-dv-je"
+  resource_group_name = azurerm_resource_group.this.id
+  location            = var.location
+  address_space       = var.vnet_address_space
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
+}
+
+resource "azurerm_subnet" "standard" {
+  name                 = "snet-k6natg-cluster-k8s-dv-je"
+  resource_group_name  = azurerm_resource_group.this.id
+  virtual_network_name = azurerm_virtual_network.this.name
+  address_prefixes     = var.snet_address_prefixes_cluster_k8s
+
+  service_endpoints                 = []
+  private_endpoint_network_policies = "Disabled"
 }
 
 # nsg 作成
@@ -71,8 +95,8 @@ module "vnet" {
 # TODO: foudationsモジュールから呼び出せるようにする。
 resource "azurerm_container_registry" "this" {
   name                = "crk6testloadtestingdvje"
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
+  resource_group_name = azurerm_resource_group.this.id
+  location            = var.location
   sku                 = "Standard"
   admin_enabled       = false
 
@@ -85,8 +109,8 @@ resource "azurerm_container_registry" "this" {
 # TODO: foudationsモジュールから呼び出せるようにする。
 resource "azurerm_kubernetes_cluster" "this" {
   name                = "aks-load-testing-dv-je"
-  location            = module.resource_group.location
-  resource_group_name = module.resource_group.name
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this.id
   dns_prefix          = "aks-load-testing-dv-je-dns"
 
   default_node_pool {
@@ -103,7 +127,7 @@ resource "azurerm_kubernetes_cluster" "this" {
       max_surge                     = "10%"
       node_soak_duration_in_minutes = 0
     }
-    vnet_subnet_id = module.vnet.subnet_ids["cluster-k8s"]
+    vnet_subnet_id = resource.azurerm_virtual_network.this.id
     zones          = [1]
   }
 
@@ -161,8 +185,8 @@ output "object_id_of_managed_id_for_aks" {
 
 # nat gateway 作成
 resource "azurerm_nat_gateway" "this" {
-  name                    = module.nat_gateway_naming.kebab
-  resource_group_name     = module.resource_group.name
+  name                    = "ng-k6natg-load-testing-dv-je"
+  resource_group_name     = azurerm_resource_group.this.id
   location                = var.location
   sku_name                = var.nat_gateway_sku_name
   idle_timeout_in_minutes = var.nat_gateway_idle_timeout_in_minutes
@@ -172,28 +196,10 @@ resource "azurerm_nat_gateway" "this" {
   }
 }
 
-# public IP Address 作成
-resource "azurerm_public_ip" "public_ip" {
-  count               = var.is_ip_address_prefix ? 0 : 1
-
-  name                = module.public_ip_address_naming.kebab
-  resource_group_name = module.resource_group.name
-  location            = var.location
-
-  allocation_method   = "Static"
-  sku                 = "Standard"
-
-  lifecycle {
-    ignore_changes = [tags]
-  }
-}
-
 # public IP Address Prefix 作成
 resource "azurerm_public_ip_prefix" "public_ip_prefix" {
-  count               = var.is_ip_address_prefix ? 1 : 0
-
-  name                = module.public_ip_address_naming.kebab
-  resource_group_name = module.resource_group.name
+  name                = "pip-k6natg-load-testing-dv-je"
+  resource_group_name = azurerm_resource_group.this.id
   location            = var.location
 
   prefix_length       = 30
@@ -204,24 +210,15 @@ resource "azurerm_public_ip_prefix" "public_ip_prefix" {
   }
 }
 
-# public IP Addressとnat gateway紐づけ
-resource "azurerm_nat_gateway_public_ip_association" "public_ip_association" {
-  count                = var.is_ip_address_prefix ? 0 : 1
-  nat_gateway_id       = azurerm_nat_gateway.this.id
-  public_ip_address_id = azurerm_public_ip.public_ip[0].id
-}
-
 # public IP Address Prefixとnat gateway紐づけ
 resource "azurerm_nat_gateway_public_ip_prefix_association" "public_ip_prefix_association" {
-  count               = var.is_ip_address_prefix ? 1 : 0
-
   nat_gateway_id      = azurerm_nat_gateway.this.id
-  public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix[0].id
+  public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix.id
 }
 
 # subnetとnat gateway紐づけ
 resource "azurerm_subnet_nat_gateway_association" "subnet_association" {
-  subnet_id      = module.vnet.subnet_ids["cluster-k8s"]
+  subnet_id      = resource.azurerm_subnet.standard.id
   nat_gateway_id = azurerm_nat_gateway.this.id
 }
 
