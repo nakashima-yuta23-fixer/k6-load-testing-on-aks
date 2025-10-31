@@ -18,7 +18,7 @@ module "resource_group" {
 }
 
 # vnet/subnet 作成
-module "vent" {
+module "vnet" {
   source = "../../foundations/networking_vnet"
 
   resource_group_name = module.resource_group.name
@@ -79,7 +79,7 @@ resource "azurerm_kubernetes_cluster" "this" {
       max_surge                     = "10%"
       node_soak_duration_in_minutes = 0
     }
-    vnet_subnet_id = module.vent.subnet_ids["cluster-k8s"]
+    vnet_subnet_id = module.vnet.subnet_ids["cluster-k8s"]
     zones          = [1]
   }
 
@@ -135,22 +135,43 @@ output "object_id_of_managed_id_for_aks" {
   value       = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
 }
 
-# public IP Address Prefix 作成
-
 # nat gateway 作成
-module "nat_gateway" {
-  source = "../../foundations/networking_nat_gateway"
-
+resource "azurerm_nat_gateway" "this" {
+  name                    = format("ng-%s-%s-prod-je", var.customer_code, var.role)
   resource_group_name     = module.resource_group.name
   location                = module.resource_group.location
-  customer_code           = var.customer_code
-  role                    = var.role
-  environment             = var.environment
-  sku_name                = var.nat_gateway_sku_name
-  idle_timeout_in_minutes = var.nat_gateway_idle_timeout_in_minutes
+  sku_name                = "Standard"
+  idle_timeout_in_minutes = 4
 
-  is_ip_address_prefix = false
-  subnet_id            = {for k, v in module.vent.subnet_ids : k => v if k != "gateway-k8s"}
+  lifecycle {
+    ignore_changes = [tags]
+  }
+}
+
+# public IP Address Prefix 作成
+resource "azurerm_public_ip_prefix" "this" {
+  name                = format("pip-%s-%s-prod-je", var.customer_code, var.role)
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+
+  prefix_length       = 30
+  sku                 = "Standard"
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
+}
+
+# public IP Address Prefixとnat gateway紐づけ
+resource "azurerm_nat_gateway_public_ip_prefix_association" "this" {
+  nat_gateway_id      = azurerm_nat_gateway.this.id
+  public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix.id
+}
+
+# subnetとnat gateway紐づけ
+resource "azurerm_subnet_nat_gateway_association" "this" {
+  subnet_id      = module.vnet.subnet_ids["cluster-k8s"]
+  nat_gateway_id = azurerm_nat_gateway.this.id
 }
 
 # k6-operatorのインストール (helmでインストールしたものもtfstateで管理するのか微妙？頻繁に実行基盤が削除されるのであれば、ｄelete時にhelmでインストールしたものの状態が変更していれば正常に削除できない可能性がある。)
