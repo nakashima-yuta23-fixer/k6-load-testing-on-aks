@@ -61,6 +61,8 @@ resource "azurerm_subnet_network_security_group_association" "nsg_subnet_associa
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
+# peering 作成 (prometheus でメトリックを Grafana にエクスポートするため)
+
 # acr 作成
 # TODO: foudationsモジュールから呼び出せるようにする。
 resource "azurerm_container_registry" "this" {
