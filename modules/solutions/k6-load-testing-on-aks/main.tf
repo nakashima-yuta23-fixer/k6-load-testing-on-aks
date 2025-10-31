@@ -204,14 +204,14 @@ resource "azurerm_public_ip_prefix" "public_ip_prefix" {
   }
 }
 
-# nat gateway 作成
+# public IP Addressとnat gateway紐づけ
 resource "azurerm_nat_gateway_public_ip_association" "public_ip_association" {
   count                = var.is_ip_address_prefix ? 0 : 1
   nat_gateway_id       = azurerm_nat_gateway.this.id
   public_ip_address_id = azurerm_public_ip.public_ip[0].id
 }
 
-# 
+# public IP Address Prefixとnat gateway紐づけ
 resource "azurerm_nat_gateway_public_ip_prefix_association" "public_ip_prefix_association" {
   count               = var.is_ip_address_prefix ? 1 : 0
 
