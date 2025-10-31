@@ -137,7 +137,7 @@ output "object_id_of_managed_id_for_aks" {
 
 # nat gateway 作成
 resource "azurerm_nat_gateway" "this" {
-  name                    = "ng-k6natg-load-testing-dv-je"
+  name                    = format("ng-%s-%s-prod-je", var.customer_code, var.role)
   resource_group_name     = module.resource_group.name
   location                = module.resource_group.location
   sku_name                = "Standard"
@@ -150,7 +150,7 @@ resource "azurerm_nat_gateway" "this" {
 
 # public IP Address Prefix 作成
 resource "azurerm_public_ip_prefix" "this" {
-  name                = "pip-k6natg-load-testing-dv-je"
+  name                = format("pip-%s-%s-prod-je", var.customer_code, var.role)
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
 
