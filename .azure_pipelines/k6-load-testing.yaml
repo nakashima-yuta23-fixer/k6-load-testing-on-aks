@@ -1,0 +1,50 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  serviceConnectionName: 'dv_fixer_gaixer-test_ea - sp-k6-load-testing-tfstate-dv-je'
+  resourceGroupName: 'rg-k6-load-testing-tfstate-dv-je'
+  location: 'japaneast'
+
+  storageAccountNmae: 'stk6loadtesttfstatedvje'
+
+steps:
+  - task: AzureCLI@2
+    displayName: 'Create Resource Group'
+    inputs:
+      azureSubscription: $(serviceConnectionName)
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az group create \
+          --name $(resourceGroupName) \
+          --location $(location)
+  
+  - task: AzureCLI@2
+    displayName: 'Create Storage Account'
+    inputs:
+      azureSubscription: $(serviceConnectionName)
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az storage account create \
+          --name $(stk6loadtesttfstatedvje) \
+          --resourceGroupName $(resourceGroupName) \
+          --location $(location)
+          --sku Standard_LRS \
+          --kind BlobStorage \
+          --access-tier Hot
+  
+  - task: AzureCLI@2
+    displayName: 'Create Container'
+    inputs:
+      azureSubscription: $(serviceConnectionName)
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az container create \
+          --resourceGroupName $(resourceGroupName) \
+          --image "tfstate" \
