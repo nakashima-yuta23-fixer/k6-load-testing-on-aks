@@ -149,7 +149,7 @@ resource "azurerm_nat_gateway" "this" {
 }
 
 # public IP Address Prefix 作成
-resource "azurerm_public_ip_prefix" "public_ip_prefix" {
+resource "azurerm_public_ip_prefix" "this" {
   name                = "pip-k6natg-load-testing-dv-je"
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
@@ -163,13 +163,13 @@ resource "azurerm_public_ip_prefix" "public_ip_prefix" {
 }
 
 # public IP Address Prefixとnat gateway紐づけ
-resource "azurerm_nat_gateway_public_ip_prefix_association" "public_ip_prefix_association" {
+resource "azurerm_nat_gateway_public_ip_prefix_association" "this" {
   nat_gateway_id      = azurerm_nat_gateway.this.id
   public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix.id
 }
 
 # subnetとnat gateway紐づけ
-resource "azurerm_subnet_nat_gateway_association" "subnet_association" {
+resource "azurerm_subnet_nat_gateway_association" "this" {
   subnet_id      = module.vnet.subnet_ids["cluster-k8s"]
   nat_gateway_id = azurerm_nat_gateway.this.id
 }
