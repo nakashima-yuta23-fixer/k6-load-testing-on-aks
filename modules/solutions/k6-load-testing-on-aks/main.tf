@@ -40,6 +40,26 @@ module "vnet" {
 }
 
 # nsg 作成
+resource "azurerm_network_security_group" "nsg" {
+  name                = format("nsg-%s-%s-prod-je", var.customer_code, var.role)
+  location            = module.resource_group.location
+  resource_group_name = module.resource_group.name
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
+}
+
+# subnetとnsgの紐づけ
+resource "azurerm_subnet_network_security_group_association" "nsg_subnet_association_k8s" {
+  subnet_id                 = module.vnet.subnet_ids["gateway-k8s"]
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "nsg_subnet_association_cluster" {
+  subnet_id                 = module.vnet.subnet_ids["cluster-k8s"]
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
 
 # peering 作成 (prometheus でメトリックを Grafana にエクスポートするため)
 
@@ -165,7 +185,7 @@ resource "azurerm_public_ip_prefix" "this" {
 # public IP Address Prefixとnat gateway紐づけ
 resource "azurerm_nat_gateway_public_ip_prefix_association" "this" {
   nat_gateway_id      = azurerm_nat_gateway.this.id
-  public_ip_prefix_id = azurerm_public_ip_prefix.public_ip_prefix.id
+  public_ip_prefix_id = azurerm_public_ip_prefix.this.id
 }
 
 # subnetとnat gateway紐づけ
