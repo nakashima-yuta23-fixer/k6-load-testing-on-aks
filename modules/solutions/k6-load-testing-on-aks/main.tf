@@ -66,7 +66,7 @@ resource "azurerm_subnet_network_security_group_association" "nsg_subnet_associa
 # acr 作成
 # TODO: foudationsモジュールから呼び出せるようにする。
 resource "azurerm_container_registry" "this" {
-  name                = "crk6testloadtestingdvje"
+  name                = "crk6testloadtesting2dvje"
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
   sku                 = "Standard"
@@ -80,14 +80,14 @@ resource "azurerm_container_registry" "this" {
 # aks クラスター作成
 # TODO: foudationsモジュールから呼び出せるようにする。
 resource "azurerm_kubernetes_cluster" "this" {
-  name                = "aks-load-testing-dv-je"
+  name                = "aks-k6test-load-testing-dv-je"
   location            = module.resource_group.location
   resource_group_name = module.resource_group.name
-  dns_prefix          = "aks-load-testing-dv-je-dns"
+  dns_prefix          = "aks-k6test-load-testing-dv-je-dns"
 
   default_node_pool {
     name                 = "npsystem"
-    node_count           = 2
+    node_count           = 1
     vm_size              = "Standard_D8ls_v5"
     auto_scaling_enabled = false
     max_pods             = 110
@@ -99,8 +99,9 @@ resource "azurerm_kubernetes_cluster" "this" {
       max_surge                     = "10%"
       node_soak_duration_in_minutes = 0
     }
-    vnet_subnet_id = module.vnet.subnet_ids["cluster-k8s"]
-    zones          = [1]
+    # vnet_subnet_id              = module.vnet.subnet_ids["cluster-k8s"]
+    zones                       = [1]
+    temporary_name_for_rotation = "npsystemtemp"
   }
 
   api_server_access_profile {
@@ -150,9 +151,11 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
 }
 
-output "object_id_of_managed_id_for_aks" {
-  description = "Object ID of system-assigned managed identity for AKS cluster"
-  value       = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
+# Container RegistryへのPull権限をAKSのマネージドIDに付与する
+resource "azurerm_role_assignment" "this" {
+  scope                = module.resource_group.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
 }
 
 # nat gateway 作成
@@ -174,8 +177,8 @@ resource "azurerm_public_ip_prefix" "this" {
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
 
-  prefix_length       = 30
-  sku                 = "Standard"
+  prefix_length = 30
+  sku           = "Standard"
 
   lifecycle {
     ignore_changes = [tags]
@@ -195,6 +198,10 @@ resource "azurerm_subnet_nat_gateway_association" "this" {
 }
 
 # k6-operatorのインストール (helmでインストールしたものもtfstateで管理するのか微妙？頻繁に実行基盤が削除されるのであれば、ｄelete時にhelmでインストールしたものの状態が変更していれば正常に削除できない可能性がある。)
-
+resource "helm_release" "k6_operator" {
+  name       = "k6-operator"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "k6-operator"
+}
 
 # prometheusのインストール (同上)

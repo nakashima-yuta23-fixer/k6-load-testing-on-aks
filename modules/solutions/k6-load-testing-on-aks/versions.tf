@@ -13,5 +13,9 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.36"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.1"
+    }
   }
 }
