@@ -99,7 +99,7 @@ resource "azurerm_kubernetes_cluster" "this" {
       max_surge                     = "10%"
       node_soak_duration_in_minutes = 0
     }
-    # vnet_subnet_id              = module.vnet.subnet_ids["cluster-k8s"]
+    vnet_subnet_id              = module.vnet.subnet_ids["cluster-k8s"]
     zones                       = [1]
     temporary_name_for_rotation = "npsystemtemp"
   }
@@ -151,7 +151,7 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
 }
 
-# Container RegistryへのPull権限をAKSのマネージドIDに付与する
+# # Container RegistryへのPull権限をAKSのマネージドIDに付与する
 resource "azurerm_role_assignment" "this" {
   scope                = module.resource_group.id
   role_definition_name = "AcrPull"
@@ -195,6 +195,20 @@ resource "azurerm_nat_gateway_public_ip_prefix_association" "this" {
 resource "azurerm_subnet_nat_gateway_association" "this" {
   subnet_id      = module.vnet.subnet_ids["cluster-k8s"]
   nat_gateway_id = azurerm_nat_gateway.this.id
+
+  depends_on = [
+    azurerm_kubernetes_cluster.this
+  ]
+}
+
+# helm provider
+provider "helm" {
+  kubernetes = {
+    host                   = azurerm_kubernetes_cluster.this.kube_config[0].host
+    client_certificate     = base64decode(azurerm_kubernetes_cluster.this.kube_config[0].client_certificate)
+    client_key             = base64decode(azurerm_kubernetes_cluster.this.kube_config[0].client_key)
+    cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.this.kube_config[0].cluster_ca_certificate)
+  }
 }
 
 # k6-operatorのインストール (helmでインストールしたものもtfstateで管理するのか微妙？頻繁に実行基盤が削除されるのであれば、ｄelete時にhelmでインストールしたものの状態が変更していれば正常に削除できない可能性がある。)
@@ -202,6 +216,12 @@ resource "helm_release" "k6_operator" {
   name       = "k6-operator"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "k6-operator"
+
+  timeout    = 60
+
+  depends_on = [
+    azurerm_kubernetes_cluster.this
+  ]
 }
 
 # prometheusのインストール (同上)
