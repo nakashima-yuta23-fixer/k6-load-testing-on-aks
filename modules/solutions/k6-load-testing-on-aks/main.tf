@@ -105,7 +105,7 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
 
   api_server_access_profile {
-    authorized_ip_ranges = ["202.211.86.16/32"]
+    authorized_ip_ranges = var.global_ip_address
   }
 
   identity {
