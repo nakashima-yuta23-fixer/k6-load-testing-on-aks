@@ -197,7 +197,7 @@ resource "azurerm_subnet_nat_gateway_association" "this" {
   nat_gateway_id = azurerm_nat_gateway.this.id
 
   depends_on = [
-    azurerm_kubernetes_cluster.this
+    helm_release.k6_operator
   ]
 }
 
