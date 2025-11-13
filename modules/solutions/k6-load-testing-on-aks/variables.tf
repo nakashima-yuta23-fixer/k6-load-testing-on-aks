@@ -47,7 +47,3 @@ variable "snet_address_prefixes_cluster_k8s" {
   description = "A list of CIDR blocks for the privatelink subnet (e.g., [\"10.10.2.0/24\"])."
   type        = list(string)
 }
-
-variable "location_debug" {
-  type = string
-}
